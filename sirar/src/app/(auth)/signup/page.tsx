@@ -31,7 +31,13 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message.includes("rate limit")) {
+        setError("عذراً، تم تجاوز الحد المسموح من المحاولات. يرجى المحاولة لاحقاً.");
+      } else if (error.message.includes("User already registered")) {
+        setError("هذا البريد الإلكتروني مسجل بالفعل.");
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
       return;
     }
