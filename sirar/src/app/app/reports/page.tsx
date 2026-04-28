@@ -1,62 +1,94 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/cache";
+import { ReportsClient } from "./reports-client";
 
-import { FileText, Download, Eye, Calendar } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+export const dynamic = "force-dynamic";
 
-const reports = [
-  { title: "تقرير تصنيف البيانات", type: "تصنيف", date: "21 مايو 2024", status: "ready" },
-  { title: "تقرير الوصول والصلاحيات", type: "صلاحيات", date: "21 مايو 2024", status: "ready" },
-  { title: "تقرير المخاطر والتنبيهات", type: "أمان", date: "21 مايو 2024", status: "ready" },
-  { title: "تقرير النسخ الاحتياطي", type: "نسخ", date: "21 مايو 2024", status: "ready" },
-  { title: "تقرير الامتثال الشهري", type: "امتثال", date: "20 مايو 2024", status: "generating" },
-  { title: "تقرير تحليل السلوك", type: "تحليل", date: "19 مايو 2024", status: "ready" },
-];
+export default async function ReportsPage() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-export default function ReportsPage() {
+  const supabase = await createClient();
+
+  const [recordsRes, alertsRes, permissionsRes] = await Promise.all([
+    supabase
+      .from("data_records")
+      .select("id, name, category, data_type, status, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("alerts")
+      .select("id, title, severity, status, type, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("permissions")
+      .select("role, category_id, can_view, can_export, can_modify")
+      .limit(20),
+  ]);
+
+  const records = recordsRes.data ?? [];
+  const alerts = alertsRes.data ?? [];
+  const permissions = permissionsRes.data ?? [];
+
+  const categoryCounts = {
+    A: records.filter((r) => r.category === "A").length,
+    B: records.filter((r) => r.category === "B").length,
+    C: records.filter((r) => r.category === "C").length,
+  };
+
+  const alertsByStatus = {
+    active: alerts.filter((a) => a.status === "active").length,
+    resolved: alerts.filter((a) => a.status === "resolved").length,
+  };
+
+  const alertsBySeverity = {
+    high: alerts.filter((a) => a.severity === "high").length,
+    medium: alerts.filter((a) => a.severity === "medium").length,
+    low: alerts.filter((a) => a.severity === "low").length,
+  };
+
+  const dateGroups: Record<string, number> = {};
+  records.forEach((r) => {
+    const d = new Date(r.created_at).toLocaleDateString("en-CA");
+    dateGroups[d] = (dateGroups[d] || 0) + 1;
+  });
+  const timeline = Object.entries(dateGroups)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-14)
+    .map(([date, count]) => ({
+      date: new Date(date).toLocaleDateString("ar-SA", { day: "numeric", month: "short" }),
+      count,
+    }));
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="h-6 w-6 text-brand" />
-            التقارير
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">جميع التقارير المتاحة للنظام</p>
-        </div>
-        <Button className="bg-brand hover:bg-brand-hover rounded-xl gap-2">
-          <FileText className="h-4 w-4" />
-          إنشاء تقرير جديد
-        </Button>
-      </div>
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {reports.map((report, i) => (
-          <div key={i} className="bg-white rounded-2xl p-5 border border-border hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 bg-brand-light rounded-xl flex items-center justify-center">
-                <FileText className="h-5 w-5 text-brand" />
-              </div>
-              <Badge className={`${report.status === "ready" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"} border-0 text-xs`}>
-                {report.status === "ready" ? "جاهز" : "قيد الإنشاء"}
-              </Badge>
-            </div>
-            <h3 className="font-bold text-sm mb-1">{report.title}</h3>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mb-4">
-              <Calendar className="h-3 w-3" />
-              {report.date}
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1 rounded-xl text-xs gap-1">
-                <Eye className="h-3 w-3" /> عرض
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 rounded-xl text-xs gap-1">
-                <Download className="h-3 w-3" /> تحميل
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <ReportsClient
+      totalRecords={records.length}
+      categoryCounts={categoryCounts}
+      alertsByStatus={alertsByStatus}
+      alertsBySeverity={alertsBySeverity}
+      totalAlerts={alerts.length}
+      timeline={timeline}
+      recentRecords={records.slice(0, 5).map((r) => ({
+        name: r.name,
+        category: r.category,
+        type: r.data_type,
+        date: new Date(r.created_at).toLocaleDateString("ar-SA"),
+      }))}
+      recentAlerts={alerts.slice(0, 5).map((a) => ({
+        title: a.title,
+        severity: a.severity,
+        status: a.status,
+        date: new Date(a.created_at).toLocaleDateString("ar-SA"),
+      }))}
+      permissions={permissions.map((p) => ({
+        role: p.role,
+        category: p.category_id,
+        canView: p.can_view,
+        canExport: p.can_export,
+        canModify: p.can_modify,
+      }))}
+    />
   );
 }

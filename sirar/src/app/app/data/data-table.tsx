@@ -8,12 +8,14 @@ import {
   Eye,
   Trash2,
   X,
-  Inbox,
   Mail,
   Phone,
   Calendar,
   Sparkles,
   MessageSquare,
+  Plus,
+  Shield,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +106,27 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Empty State — Big CTA */}
+      {initial.length === 0 && (
+        <div className="bg-gradient-to-br from-brand-light via-white to-white rounded-2xl p-8 border border-brand-muted text-center">
+          <div className="w-16 h-16 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand/20">
+            <Sparkles className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">ابدأ بإضافة بياناتك</h2>
+          <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">
+            استخدم المحادثة الذكية لإدخال بياناتك — يمكنك كتابة النص أو رفع ملف PDF أو صورة وسيتم تصنيفها تلقائياً
+          </p>
+          <Link
+            href="/app/chat"
+            className="inline-flex items-center gap-3 bg-brand hover:bg-brand-hover text-white font-bold text-base px-8 py-4 rounded-2xl transition-colors shadow-md shadow-brand/20"
+          >
+            <MessageSquare className="h-6 w-6" />
+            إضافة بيانات عبر المحادثة الذكية
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px]">
@@ -130,36 +153,32 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
             </button>
           ))}
         </div>
-        <Button
-          variant="outline"
-          onClick={handleExport}
-          className="rounded-xl gap-2 text-sm"
-        >
+        <Button variant="outline" onClick={handleExport} className="rounded-xl gap-2 text-sm">
           <Download className="h-4 w-4" /> تصدير
         </Button>
+
+        {/* Prominent Add Button */}
         <Link
           href="/app/chat"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-hover hover:opacity-90 text-white text-sm font-medium px-4 py-2 shadow-sm transition-opacity"
+          className="inline-flex items-center gap-2.5 bg-brand hover:bg-brand-hover text-white font-medium text-sm px-5 py-2.5 rounded-xl shadow-sm transition-all hover:shadow-md"
         >
-          <MessageSquare className="h-4 w-4" />
-          <Sparkles className="h-4 w-4" />
-          إضافة عبر المحادثة الذكية
+          <div className="relative">
+            <Plus className="h-5 w-5" />
+            <Sparkles className="h-3 w-3 absolute -top-1 -end-1 text-yellow-300 animate-pulse" />
+          </div>
+          إضافة بيانات
         </Link>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-border overflow-hidden">
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && initial.length > 0 ? (
           <div className="text-center py-16 px-4">
-            <Inbox className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm font-medium">لا توجد بيانات</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {initial.length === 0
-                ? "ابدأ بإضافة سجل بيانات جديد"
-                : "جرّب تغيير معايير البحث أو الفلترة"}
-            </p>
+            <Shield className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-medium">لا توجد نتائج</p>
+            <p className="text-xs text-muted-foreground mt-1">جرّب تغيير معايير البحث أو الفلترة</p>
           </div>
-        ) : (
+        ) : filtered.length > 0 ? (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface border-b border-border text-muted-foreground">
@@ -173,25 +192,14 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
             </thead>
             <tbody>
               {filtered.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-border last:border-0 hover:bg-surface/50 transition-colors"
-                >
+                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
                   <td className="p-3 font-medium">{r.name}</td>
-                  <td className="p-3 text-muted-foreground">
-                    {typeLabels[r.data_type] || r.data_type}
+                  <td className="p-3 text-muted-foreground">{typeLabels[r.data_type] || r.data_type}</td>
+                  <td className="p-3">
+                    <Badge className={`${categoryColors[r.category]} border-0 text-xs`}>فئة {r.category}</Badge>
                   </td>
                   <td className="p-3">
-                    <Badge
-                      className={`${categoryColors[r.category]} border-0 text-xs`}
-                    >
-                      فئة {r.category}
-                    </Badge>
-                  </td>
-                  <td className="p-3">
-                    <Badge
-                      className={`${statusLabels[r.status]?.color} border-0 text-xs`}
-                    >
+                    <Badge className={`${statusLabels[r.status]?.color} border-0 text-xs`}>
                       {statusLabels[r.status]?.label ?? r.status}
                     </Badge>
                   </td>
@@ -200,23 +208,10 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setViewing(r)}
-                        className="h-8 w-8 hover:bg-brand-light hover:text-brand"
-                        title="عرض"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => setViewing(r)} className="h-8 w-8 hover:bg-brand-light hover:text-brand" title="عرض">
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(r.id)}
-                        disabled={pending}
-                        className="h-8 w-8 hover:bg-red-50 hover:text-red-500"
-                        title="حذف"
-                      >
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(r.id)} disabled={pending} className="h-8 w-8 hover:bg-red-50 hover:text-red-500" title="حذف">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -225,41 +220,23 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
               ))}
             </tbody>
           </table>
-        )}
+        ) : null}
       </div>
-
 
       {/* View Modal */}
       {viewing && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setViewing(null)}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-md animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setViewing(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">تفاصيل السجل</h3>
-              <button
-                onClick={() => setViewing(null)}
-                className="p-1 rounded-lg hover:bg-surface"
-              >
+              <button onClick={() => setViewing(null)} className="p-1 rounded-lg hover:bg-surface">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="space-y-3">
               <div className="flex items-center gap-2 mb-3">
-                <Badge
-                  className={`${categoryColors[viewing.category]} border-0`}
-                >
-                  فئة {viewing.category}
-                </Badge>
-                <Badge
-                  className={`${statusLabels[viewing.status]?.color} border-0`}
-                >
-                  {statusLabels[viewing.status]?.label}
-                </Badge>
+                <Badge className={`${categoryColors[viewing.category]} border-0`}>فئة {viewing.category}</Badge>
+                <Badge className={`${statusLabels[viewing.status]?.color} border-0`}>{statusLabels[viewing.status]?.label}</Badge>
               </div>
               <div className="bg-surface rounded-xl p-3">
                 <p className="text-xs text-muted-foreground mb-1">الاسم</p>
@@ -267,44 +244,26 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
               </div>
               {viewing.email && (
                 <div className="bg-surface rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    <Mail className="h-3 w-3" /> البريد
-                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Mail className="h-3 w-3" /> البريد</div>
                   <p className="font-medium" dir="ltr">{viewing.email}</p>
                 </div>
               )}
               {viewing.phone && (
                 <div className="bg-surface rounded-xl p-3">
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    <Phone className="h-3 w-3" /> الهاتف
-                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Phone className="h-3 w-3" /> الهاتف</div>
                   <p className="font-medium" dir="ltr">{viewing.phone}</p>
                 </div>
               )}
               <div className="bg-surface rounded-xl p-3">
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                  <Calendar className="h-3 w-3" /> تاريخ الإضافة
-                </div>
-                <p className="font-medium text-sm">
-                  {new Date(viewing.created_at).toLocaleString("ar-SA")}
-                </p>
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1"><Calendar className="h-3 w-3" /> تاريخ الإضافة</div>
+                <p className="font-medium text-sm">{new Date(viewing.created_at).toLocaleString("ar-SA")}</p>
               </div>
             </div>
             <div className="flex gap-2 pt-4">
-              <Button
-                variant="outline"
-                className="flex-1 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600"
-                onClick={() => handleDelete(viewing.id)}
-                disabled={pending}
-              >
+              <Button variant="outline" className="flex-1 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(viewing.id)} disabled={pending}>
                 <Trash2 className="h-4 w-4 me-1" /> حذف
               </Button>
-              <Button
-                className="flex-1 bg-brand hover:bg-brand-hover rounded-xl"
-                onClick={() => setViewing(null)}
-              >
-                إغلاق
-              </Button>
+              <Button className="flex-1 bg-brand hover:bg-brand-hover rounded-xl" onClick={() => setViewing(null)}>إغلاق</Button>
             </div>
           </div>
         </div>

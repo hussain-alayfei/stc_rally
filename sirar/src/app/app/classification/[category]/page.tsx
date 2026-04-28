@@ -1,25 +1,23 @@
-"use client";
-
-import { use, useState } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ChevronLeft,
-  Search,
-  Filter,
-  Download,
   Shield,
   Users,
   UserCheck,
   UserCog,
   Lock,
-  Info,
-  CheckCircle,
-  Clock,
   Database,
+  Inbox,
+  MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/cache";
+
+export const dynamic = "force-dynamic";
 
 const categoryMeta: Record<
   string,
@@ -32,6 +30,7 @@ const categoryMeta: Record<
     borderColor: string;
     letterBg: string;
     letterColor: string;
+    badgeBg: string;
     description: string;
     accessRules: { icon: React.ElementType; label: string }[];
   }
@@ -45,8 +44,8 @@ const categoryMeta: Record<
     borderColor: "border-red-200",
     letterBg: "bg-red-100",
     letterColor: "text-red-600",
-    description:
-      "بيانات شديدة الحساسية تتطلب أعلى مستوى من الحماية والتقييد في الوصول.",
+    badgeBg: "bg-red-100 text-red-700",
+    description: "بيانات شديدة الحساسية تتطلب أعلى مستوى من الحماية.",
     accessRules: [
       { icon: UserCog, label: "المدراء التنفيذيون فقط" },
       { icon: Shield, label: "مدير النظام" },
@@ -61,8 +60,8 @@ const categoryMeta: Record<
     borderColor: "border-amber-200",
     letterBg: "bg-amber-100",
     letterColor: "text-amber-600",
-    description:
-      "بيانات حساسة تتطلب مستوى متوسط من الحماية مع إمكانية وصول محدودة.",
+    badgeBg: "bg-amber-100 text-amber-700",
+    description: "بيانات حساسة تتطلب مستوى متوسط من الحماية.",
     accessRules: [
       { icon: UserCog, label: "مدراء الأقسام" },
       { icon: Users, label: "الموظفون المصرح لهم" },
@@ -77,106 +76,75 @@ const categoryMeta: Record<
     borderColor: "border-green-200",
     letterBg: "bg-green-100",
     letterColor: "text-green-600",
-    description:
-      "بيانات عامة أو قليلة الحساسية متاحة لعدد أكبر من المستخدمين.",
+    badgeBg: "bg-green-100 text-green-700",
+    description: "بيانات عامة متاحة لعدد أكبر من المستخدمين.",
     accessRules: [
       { icon: Users, label: "جميع الموظفين" },
       { icon: UserCheck, label: "الضيوف المصرح لهم" },
-      { icon: UserCog, label: "الموظفين الموثقين" },
     ],
   },
 };
 
-const sampleRecords = [
-  {
-    name: "أحمد محمد",
-    email: "ahmed.m@example.com",
-    phone: "+966 50 123 4567",
-    birthDate: "1990-05-15",
-    address: "الرياض السعودية",
-    nationalId: "1087****35",
-  },
-  {
-    name: "سارة خالد",
-    email: "sara.k@example.com",
-    phone: "+966 54 765 4321",
-    birthDate: "1992-08-22",
-    address: "جدة السعودية",
-    nationalId: "2194****87",
-  },
-  {
-    name: "محمد عبدالله",
-    email: "mohammed.a@example.com",
-    phone: "+966 59 987 6543",
-    birthDate: "1988-11-03",
-    address: "الدمام السعودية",
-    nationalId: "3056****21",
-  },
-];
+const typeLabels: Record<string, string> = {
+  personal: "شخصية",
+  financial: "مالية",
+  medical: "صحية",
+  contact: "اتصال",
+};
 
-export default function CategoryDetailPage({
+export default async function CategoryDetailPage({
   params,
 }: {
   params: Promise<{ category: string }>;
 }) {
-  const { category } = use(params);
-  const cat = categoryMeta[category.toUpperCase()] || categoryMeta.C;
-  const [page, setPage] = useState(1);
+  const { category } = await params;
+  const catKey = category.toUpperCase();
+  const cat = categoryMeta[catKey];
+  if (!cat) redirect("/app/classification");
+
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+
+  const supabase = await createClient();
+  const { data: records } = await supabase
+    .from("data_records")
+    .select("id, name, email, phone, data_type, status, created_at")
+    .eq("user_id", user.id)
+    .eq("category", catKey)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const rows = records ?? [];
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
+    <div className="space-y-6 animate-fade-in">
+      {/* Breadcrumb + Back */}
       <div className="flex items-center gap-2 text-sm">
-        <Link
-          href="/app/classification"
-          className="text-brand hover:underline"
-        >
+        <Link href="/app/classification" className="text-brand hover:underline">
           فئات البيانات
         </Link>
         <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-        <span className="text-muted-foreground">
-          {cat.letter} {cat.letter}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Link href="/app/classification">
-          <Button variant="outline" className="rounded-xl gap-2 text-sm">
-            العودة إلى الفئات
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </Link>
+        <span className="text-muted-foreground">{cat.nameAr}</span>
       </div>
 
       {/* Category Header */}
-      <div className="text-center">
-        <div
-          className={`w-14 h-14 ${cat.letterBg} ${cat.letterColor} rounded-xl flex items-center justify-center text-2xl font-bold mx-auto mb-3`}
-        >
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 ${cat.letterBg} ${cat.letterColor} rounded-xl flex items-center justify-center text-xl font-bold`}>
           {cat.letter}
         </div>
-        <h1 className="text-2xl font-bold">
-          {cat.nameAr} - {cat.level}
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1 max-w-lg mx-auto">
-          يمكنك عرض البيانات المصرح بها في هذه الفئة مع حماية المعلومات
-          الحساسة
-        </p>
+        <div>
+          <h1 className="text-xl font-bold">{cat.nameAr} — {cat.level}</h1>
+          <p className="text-sm text-muted-foreground">{cat.description}</p>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="flex flex-wrap items-center justify-center gap-6 bg-white rounded-2xl p-4 border border-border">
+      <div className="flex flex-wrap items-center gap-6 bg-white rounded-2xl p-4 border border-border">
         <div className="flex items-center gap-3">
           <Shield className="h-5 w-5" style={{ color: cat.color }} />
           <div>
-            <p className="text-xs text-muted-foreground">مستوى الوصول</p>
-            <p className="font-semibold text-sm flex items-center gap-1">
-              <span
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: cat.color }}
-              />
-              {cat.level}
-            </p>
+            <p className="text-xs text-muted-foreground">مستوى الأمان</p>
+            <p className="font-semibold text-sm">{cat.level}</p>
           </div>
         </div>
         <div className="w-px h-8 bg-border hidden sm:block" />
@@ -184,153 +152,63 @@ export default function CategoryDetailPage({
           <Database className="h-5 w-5 text-brand" />
           <div>
             <p className="text-xs text-muted-foreground">عدد السجلات</p>
-            <p className="font-semibold text-sm">2,456 سجل</p>
-          </div>
-        </div>
-        <div className="w-px h-8 bg-border hidden sm:block" />
-        <div className="flex items-center gap-3">
-          <Clock className="h-5 w-5 text-muted-foreground" />
-          <div>
-            <p className="text-xs text-muted-foreground">آخر تحديث</p>
-            <p className="font-semibold text-sm">10:45 AM مايو 2024</p>
+            <p className="font-semibold text-sm">{rows.length} سجل</p>
           </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
-        {/* Main Content */}
-        <div className="space-y-4">
-          {/* Controls */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="بحث في البيانات..."
-                className="ps-10 rounded-xl bg-white"
-              />
+      <div className="grid lg:grid-cols-[1fr_280px] gap-6">
+        {/* Table */}
+        <div className="bg-white rounded-2xl border border-border overflow-hidden">
+          {rows.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <Inbox className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm font-medium mb-1">لا توجد سجلات في {cat.nameAr}</p>
+              <p className="text-xs text-muted-foreground mb-4">أضف بيانات جديدة عبر المحادثة الذكية</p>
+              <Link
+                href="/app/chat"
+                className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+              >
+                <Sparkles className="h-4 w-4" />
+                إضافة بيانات
+              </Link>
             </div>
-            <Button variant="outline" className="rounded-xl gap-2 text-sm">
-              <Filter className="h-4 w-4" />
-              فلترة
-            </Button>
-            <Button variant="outline" className="rounded-xl gap-2 text-sm">
-              <Download className="h-4 w-4" />
-              تصدير
-            </Button>
-          </div>
-
-          {/* Table Header */}
-          <h3 className="font-bold">بيانات {cat.nameAr}</h3>
-
-          {/* Table */}
-          <div className="bg-white rounded-2xl border border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-surface text-muted-foreground border-b border-border">
-                    <th className="text-start p-3 font-medium">الاسم</th>
-                    <th className="text-start p-3 font-medium">
-                      البريد الإلكتروني
-                    </th>
-                    <th className="text-start p-3 font-medium">رقم الجوال</th>
-                    <th className="text-start p-3 font-medium">
-                      تاريخ الميلاد
-                    </th>
-                    <th className="text-start p-3 font-medium">العنوان</th>
-                    <th className="text-start p-3 font-medium">رقم الهوية</th>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-surface text-muted-foreground border-b border-border">
+                  <th className="text-start p-3 font-medium">الاسم</th>
+                  <th className="text-start p-3 font-medium">النوع</th>
+                  <th className="text-start p-3 font-medium">البريد</th>
+                  <th className="text-start p-3 font-medium">الجوال</th>
+                  <th className="text-start p-3 font-medium">الحالة</th>
+                  <th className="text-start p-3 font-medium">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface/50 transition-colors">
+                    <td className="p-3 font-medium">{r.name}</td>
+                    <td className="p-3 text-muted-foreground">{typeLabels[r.data_type] || r.data_type}</td>
+                    <td className="p-3 text-muted-foreground text-xs" dir="ltr">{r.email || "—"}</td>
+                    <td className="p-3 text-muted-foreground text-xs" dir="ltr">{r.phone || "—"}</td>
+                    <td className="p-3">
+                      <Badge className={`text-[10px] border-0 ${r.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
+                        {r.status === "active" ? "نشط" : r.status}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-muted-foreground text-xs">
+                      {new Date(r.created_at).toLocaleDateString("ar-SA")}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {sampleRecords.map((record, i) => (
-                    <tr
-                      key={i}
-                      className="border-b border-border last:border-0 hover:bg-surface/50"
-                    >
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-500" />
-                          {record.name}
-                        </div>
-                      </td>
-                      <td className="p-3" dir="ltr">
-                        {record.email}
-                      </td>
-                      <td className="p-3" dir="ltr">
-                        {record.phone}
-                      </td>
-                      <td className="p-3">
-                        <Badge className="bg-surface text-muted-foreground border-0 text-xs font-normal">
-                          معلومات محاكاة
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <Badge className="bg-surface text-muted-foreground border-0 text-xs font-normal">
-                          معلومات محاكاة
-                        </Badge>
-                      </td>
-                      <td className="p-3" dir="ltr">
-                        {record.nationalId}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            <div className="flex items-center justify-between p-3 border-t border-border text-xs text-muted-foreground">
-              <span>عرض 10 من 2,456 سجل</span>
-              <div className="flex items-center gap-1">
-                <span className="text-muted-foreground">&lt;</span>
-                <button className="w-8 h-8 rounded-lg bg-brand text-white flex items-center justify-center font-medium">
-                  1
-                </button>
-                <button className="w-8 h-8 rounded-lg hover:bg-surface flex items-center justify-center">
-                  2
-                </button>
-                <button className="w-8 h-8 rounded-lg hover:bg-surface flex items-center justify-center">
-                  3
-                </button>
-                <span>...</span>
-                <span className="text-muted-foreground">&gt;</span>
-              </div>
-            </div>
-          </div>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-4">
-          {/* Category Info */}
-          <div className="bg-white rounded-2xl p-5 border border-border">
-            <div className="flex items-center gap-2 mb-4">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <h3 className="font-bold text-sm">معلومات الفئة</h3>
-            </div>
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">المستوى</span>
-                <span className="font-medium">{cat.level}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">الوصف</span>
-                <span className="font-medium text-xs max-w-[180px] text-start">
-                  {cat.description}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">عدد السجلات</span>
-                <span className="font-medium">2,456</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">آخر تحديث</span>
-                <span className="font-medium text-xs">
-                  10:45 AM مايو 2024
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Who can access */}
           <div className="bg-white rounded-2xl p-5 border border-border">
             <div className="flex items-center gap-2 mb-4">
               <Users className="h-5 w-5 text-brand" />
@@ -346,31 +224,28 @@ export default function CategoryDetailPage({
             </div>
           </div>
 
-          {/* Data Protection */}
           <div className="bg-brand-light rounded-2xl p-5 border border-brand-muted">
             <div className="flex items-center gap-2 mb-2">
               <Lock className="h-5 w-5 text-brand" />
-              <h3 className="font-bold text-sm">حماية البيانات</h3>
+              <h3 className="font-bold text-sm">الحماية المطبّقة</h3>
             </div>
-            <p className="text-xs text-muted-foreground mb-2">
-              تم تطبيق تقنية محاكاة البيانات على المعلومات الحساسة للحفاظ على
-              السرية مع الإبقاء على فائدة البيانات.
+            <p className="text-xs text-muted-foreground">
+              {catKey === "A"
+                ? "تشفير AES-256 + إخفاء كامل + وصول مقيّد"
+                : catKey === "B"
+                  ? "تشفير في النقل + تسجيل الوصول + إخفاء جزئي"
+                  : "تسجيل الوصول فقط"}
             </p>
-            <button className="text-brand text-xs font-medium flex items-center gap-1">
-              <Info className="h-3 w-3" />
-              اعرف المزيد
-            </button>
           </div>
-        </div>
-      </div>
 
-      {/* Footer Notice */}
-      <div className="bg-white rounded-2xl p-4 border border-border text-center">
-        <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
-          <Shield className="h-4 w-4 text-brand" />
-          تم تطبيق الحماية الذكية. تم إخفاء أو محاكاة بعض البيانات الحساسة
-          للحفاظ على الخصوصية والأمان.
-        </p>
+          <Link
+            href="/app/chat"
+            className="flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-white text-sm font-medium px-4 py-3 rounded-xl transition-colors w-full"
+          >
+            <MessageSquare className="h-4 w-4" />
+            إضافة بيانات جديدة
+          </Link>
+        </div>
       </div>
     </div>
   );

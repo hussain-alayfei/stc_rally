@@ -4,13 +4,7 @@ import { z } from "zod";
 import { SIRAR_SYSTEM_PROMPT } from "@/lib/ai/system-prompts";
 import { createClient } from "@/lib/supabase/server";
 
-export const maxDuration = 30;
-
-/* ─────────────────────────────────────────────────────────────
-   SMART CHAT — uses tools to extract & save data live
-   The AI decides when it has enough info to call a tool.
-   Tool execution writes directly to Supabase + creates audit log.
-   ───────────────────────────────────────────────────────────── */
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { messages, conversationId } = await req.json();
@@ -22,7 +16,6 @@ export async function POST(req: Request) {
 
   const userId = user?.id;
 
-  // Persist user message immediately (last message in the array)
   if (userId && conversationId && messages.length > 0) {
     const last = messages[messages.length - 1];
     if (last?.role === "user") {
@@ -30,17 +23,16 @@ export async function POST(req: Request) {
         .filter((p: { type: string }) => p.type === "text")
         .map((p: { text: string }) => p.text)
         .join("");
-      await supabase.from("messages").insert({
-        conversation_id: conversationId,
-        role: "user",
-        content: text,
-      });
-      // Update conversation title from first message if still default
+      if (text) {
+        await supabase.from("messages").insert({
+          conversation_id: conversationId,
+          role: "user",
+          content: text,
+        });
+      }
       await supabase
         .from("conversations")
-        .update({
-          updated_at: new Date().toISOString(),
-        })
+        .update({ updated_at: new Date().toISOString() })
         .eq("id", conversationId);
     }
   }
@@ -65,10 +57,8 @@ export async function POST(req: Request) {
           national_id: z.string().optional().describe("رقم الهوية الوطنية"),
         }),
         execute: async ({ name, email, phone, birth_date, national_id }) => {
-          if (!userId) {
-            return { ok: false, error: "غير مصرح" };
-          }
-          // Smart classification rules
+          if (!userId) return { ok: false, error: "غير مصرح" };
+
           let category: "A" | "B" | "C" = "C";
           let score = 25;
           if (national_id || birth_date) {
@@ -134,12 +124,7 @@ export async function POST(req: Request) {
             category,
             score,
             type: "personal",
-            display: {
-              name,
-              email,
-              phone,
-              birth_date,
-            },
+            display: { name, email, phone, birth_date },
           };
         },
       }),
@@ -154,13 +139,7 @@ export async function POST(req: Request) {
           iban: z.string().optional().describe("رقم IBAN"),
           balance: z.number().optional().describe("الرصيد"),
         }),
-        execute: async ({
-          owner_name,
-          bank_name,
-          account_number,
-          iban,
-          balance,
-        }) => {
+        execute: async ({ owner_name, bank_name, account_number, iban, balance }) => {
           if (!userId) return { ok: false, error: "غير مصرح" };
 
           const masked = account_number
@@ -182,12 +161,7 @@ export async function POST(req: Request) {
               account_number: account_number || null,
               balance: balance ?? null,
               status: "active",
-              fields: {
-                bank_name,
-                account_number,
-                iban,
-                balance,
-              },
+              fields: { bank_name, account_number, iban, balance },
               masked_fields: { masked_account: masked },
             })
             .select()
@@ -219,18 +193,12 @@ export async function POST(req: Request) {
             category: "A",
             score: 95,
             type: "financial",
-            display: {
-              owner_name,
-              bank_name,
-              account_masked: masked,
-              balance,
-            },
+            display: { owner_name, bank_name, account_masked: masked, balance },
           };
         },
       }),
     },
     onFinish: async ({ text }) => {
-      // Persist assistant response
       if (userId && conversationId && text) {
         await supabase.from("messages").insert({
           conversation_id: conversationId,

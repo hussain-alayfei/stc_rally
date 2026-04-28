@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   devIndicators: false,
+  serverExternalPackages: ["pdf-parse"],
   experimental: {
     optimizePackageImports: [
       "lucide-react",
