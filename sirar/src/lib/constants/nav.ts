@@ -24,7 +24,7 @@ export const sidebarNav: NavItem[] = [
   { label: "البيانات", href: "/app/data", icon: Database },
   { label: "تصنيف البيانات", href: "/app/classification", icon: Tags },
   { label: "التقارير", href: "/app/reports", icon: FileText },
-  { label: "المخاطر والتنبيهات", href: "/app/alerts", icon: AlertTriangle, badge: "●" },
+  { label: "المخاطر والتنبيهات", href: "/app/alerts", icon: AlertTriangle },
   { label: "تكامل الأنظمة", href: "/app/integrations", icon: Link2 },
   { label: "سجل العمليات", href: "/app/audit", icon: ClipboardList },
   { label: "الإعدادات", href: "/app/settings", icon: Settings },

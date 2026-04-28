@@ -14,60 +14,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getDisplayName } from "@/lib/supabase/cache";
+import { createClient } from "@/lib/supabase/server";
 import { DistributionChart, TrendChart } from "./dashboard-charts";
-
-const kpis = [
-  {
-    label: "إجمالي البيانات",
-    value: "2,456,789",
-    sub: "عنصر",
-    change: "+5% عن الشهر الماضي",
-    trend: "up",
-    icon: Database,
-    color: "text-brand",
-    bg: "bg-brand-light",
-  },
-  {
-    label: "البيانات المصنفة",
-    value: "1,845,234",
-    sub: "عنصر",
-    change: "75.1% من إجمالي البيانات",
-    trend: "up",
-    icon: Tags,
-    color: "text-green-600",
-    bg: "bg-green-50",
-  },
-  {
-    label: "البيانات الحساسة",
-    value: "456,789",
-    sub: "عنصر",
-    change: "18.6% من إجمالي البيانات",
-    trend: "down",
-    icon: AlertTriangle,
-    color: "text-red-500",
-    bg: "bg-red-50",
-  },
-  {
-    label: "المستخدمون",
-    value: "128",
-    sub: "مستخدم",
-    change: "8 من الشهر الماضي",
-    trend: "up",
-    icon: Users,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-  },
-  {
-    label: "التنبيهات النشطة",
-    value: "24",
-    sub: "تنبيه",
-    change: "15 تم حلها",
-    trend: "down",
-    icon: Bell,
-    color: "text-amber-500",
-    bg: "bg-amber-50",
-  },
-];
 
 const sourcesData = [
   { name: "قاعدة البيانات الرئيسية", value: 892, color: "#6F4FE8", pct: "84%" },
@@ -75,13 +23,6 @@ const sourcesData = [
   { name: "سحابة الشركة", value: 256, color: "#22C55E", pct: "23%" },
   { name: "التطبيقات الداخلية", value: 128, color: "#F59E0B", pct: "12%" },
   { name: "أخرى", value: 64, color: "#EF4444", pct: "6%" },
-];
-
-const alerts = [
-  { title: "محاولة وصول غير مصرح بها", time: "منذ 5 دقائق", severity: "high" },
-  { title: "تحميل بيانات حساسة", time: "منذ 15 دقيقة", severity: "high" },
-  { title: "تغيير في الصلاحيات", time: "منذ ساعة", severity: "medium" },
-  { title: "فشل في النسخ الاحتياطي", time: "منذ 3 ساعات", severity: "medium" },
 ];
 
 const reports = [
@@ -100,13 +41,108 @@ const protectionStatus = [
 
 export default async function DashboardPage() {
   const { firstName } = await getDisplayName();
+  const supabase = await createClient();
+
+  const [
+    { count: totalRecords },
+    { count: catACount },
+    { count: catBCount },
+    { count: catCCount },
+    { count: activeAlertCount },
+    { data: recentAlerts },
+  ] = await Promise.all([
+    supabase.from("data_records").select("*", { count: "exact", head: true }),
+    supabase.from("data_records").select("*", { count: "exact", head: true }).eq("category", "A"),
+    supabase.from("data_records").select("*", { count: "exact", head: true }).eq("category", "B"),
+    supabase.from("data_records").select("*", { count: "exact", head: true }).eq("category", "C"),
+    supabase.from("alerts").select("*", { count: "exact", head: true }).eq("status", "active"),
+    supabase.from("alerts").select("title, severity, created_at").eq("status", "active").order("created_at", { ascending: false }).limit(4),
+  ]);
+
+  const total = totalRecords ?? 0;
+  const catA = catACount ?? 0;
+  const catB = catBCount ?? 0;
+  const catC = catCCount ?? 0;
+  const classified = catA + catB + catC;
+  const alerts = activeAlertCount ?? 0;
+  const classifiedPct = total > 0 ? ((classified / total) * 100).toFixed(1) : "0";
+  const sensitivePct = total > 0 ? ((catA / total) * 100).toFixed(1) : "0";
+
+  const kpis = [
+    {
+      label: "إجمالي البيانات",
+      value: total.toLocaleString(),
+      sub: "عنصر",
+      change: `${classified.toLocaleString()} مصنف`,
+      trend: "up" as const,
+      icon: Database,
+      color: "text-brand",
+      bg: "bg-brand-light",
+    },
+    {
+      label: "البيانات المصنفة",
+      value: classified.toLocaleString(),
+      sub: "عنصر",
+      change: `${classifiedPct}% من إجمالي البيانات`,
+      trend: "up" as const,
+      icon: Tags,
+      color: "text-green-600",
+      bg: "bg-green-50",
+    },
+    {
+      label: "البيانات الحساسة (فئة A)",
+      value: catA.toLocaleString(),
+      sub: "عنصر",
+      change: `${sensitivePct}% من إجمالي البيانات`,
+      trend: catA > 0 ? "down" as const : "up" as const,
+      icon: AlertTriangle,
+      color: "text-red-500",
+      bg: "bg-red-50",
+    },
+    {
+      label: "فئة B (متوسطة)",
+      value: catB.toLocaleString(),
+      sub: "عنصر",
+      change: "حساسية متوسطة",
+      trend: "up" as const,
+      icon: Users,
+      color: "text-blue-500",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "التنبيهات النشطة",
+      value: alerts.toLocaleString(),
+      sub: "تنبيه",
+      change: alerts === 0 ? "لا توجد تنبيهات" : `${alerts} تنبيه نشط`,
+      trend: alerts > 0 ? "down" as const : "up" as const,
+      icon: Bell,
+      color: "text-amber-500",
+      bg: "bg-amber-50",
+    },
+  ];
+
   const now = new Date();
   const dateStr = now.toLocaleDateString("ar-SA", { day: "numeric", month: "long" });
   const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });
 
+  function timeAgo(dateStr: string) {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "الآن";
+    if (mins < 60) return `منذ ${mins} دقيقة`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `منذ ${hrs} ساعة`;
+    return `منذ ${Math.floor(hrs / 24)} يوم`;
+  }
+
+  const alertsList = (recentAlerts ?? []).map((a) => ({
+    title: a.title,
+    time: timeAgo(a.created_at),
+    severity: a.severity as string,
+  }));
+
   return (
     <div className="space-y-6">
-      {/* Welcome Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">مرحباً {firstName} 👋</h1>
@@ -128,7 +164,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {kpis.map((kpi) => (
           <div key={kpi.label} className="bg-white rounded-2xl p-4 border border-border">
@@ -154,31 +189,21 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Charts Row */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Distribution Donut */}
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm">توزيع البيانات حسب التصنيف</h3>
-            <span className="text-xs text-muted-foreground bg-surface px-2 py-1 rounded-lg">
-              هذا الشهر ▾
-            </span>
+            <span className="text-xs text-muted-foreground bg-surface px-2 py-1 rounded-lg">هذا الشهر</span>
           </div>
           <DistributionChart />
         </div>
-
-        {/* Trend Line */}
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm">اتجاه البيانات</h3>
-            <span className="text-xs text-muted-foreground bg-surface px-2 py-1 rounded-lg">
-              آخر 6 أشهر ▾
-            </span>
+            <span className="text-xs text-muted-foreground bg-surface px-2 py-1 rounded-lg">آخر 6 أشهر</span>
           </div>
           <TrendChart />
         </div>
-
-        {/* Storage Sources */}
         <div className="bg-white rounded-2xl p-5 border border-border">
           <h3 className="font-bold text-sm mb-4">أكثر المصادر تخزيناً للبيانات</h3>
           <div className="space-y-4">
@@ -189,10 +214,7 @@ export default async function DashboardPage() {
                   <span className="font-semibold">{source.value} GB</span>
                 </div>
                 <div className="w-full h-2 bg-surface rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: source.pct, backgroundColor: source.color }}
-                  />
+                  <div className="h-full rounded-full" style={{ width: source.pct, backgroundColor: source.color }} />
                 </div>
               </div>
             ))}
@@ -200,20 +222,14 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom Row */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Protection Status */}
         <div className="bg-white rounded-2xl p-5 border border-border">
           <h3 className="font-bold text-sm mb-4">حالة الحماية</h3>
           <div className="flex items-center justify-center mb-4">
             <div className="relative w-32 h-32">
               <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
                 <circle cx="60" cy="60" r="52" fill="none" stroke="#E9E5F2" strokeWidth="8" />
-                <circle
-                  cx="60" cy="60" r="52" fill="none" stroke="#6F4FE8" strokeWidth="8"
-                  strokeDasharray={`${2 * Math.PI * 52 * 0.96} ${2 * Math.PI * 52 * 0.04}`}
-                  strokeLinecap="round"
-                />
+                <circle cx="60" cy="60" r="52" fill="none" stroke="#6F4FE8" strokeWidth="8" strokeDasharray={`${2 * Math.PI * 52 * 0.96} ${2 * Math.PI * 52 * 0.04}`} strokeLinecap="round" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
@@ -234,46 +250,42 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Alerts */}
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm">أحدث التنبيهات</h3>
-            <Link href="/app/alerts" className="text-xs text-brand hover:underline">
-              عرض الكل
-            </Link>
+            <Link href="/app/alerts" className="text-xs text-brand hover:underline">عرض الكل</Link>
           </div>
-          <div className="space-y-3">
-            {alerts.map((alert, i) => (
-              <div key={i} className="flex items-start gap-3 text-xs">
-                <div
-                  className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                    alert.severity === "high" ? "bg-red-500" : "bg-amber-500"
-                  }`}
-                />
-                <div className="flex-1">
-                  <p className="font-medium">{alert.title}</p>
-                  <p className="text-muted-foreground">{alert.time}</p>
+          {alertsList.length === 0 ? (
+            <div className="text-center py-6">
+              <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">لا توجد تنبيهات نشطة</p>
+              <Link href="/app/alerts" className="text-xs text-brand hover:underline mt-1 inline-block">
+                تحميل بيانات توضيحية
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {alertsList.map((alert, i) => (
+                <div key={i} className="flex items-start gap-3 text-xs">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${alert.severity === "high" ? "bg-red-500" : "bg-amber-500"}`} />
+                  <div className="flex-1">
+                    <p className="font-medium">{alert.title}</p>
+                    <p className="text-muted-foreground">{alert.time}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Quick Reports */}
         <div className="bg-white rounded-2xl p-5 border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-sm">التقارير السريعة</h3>
-            <Link href="/app/reports" className="text-xs text-brand hover:underline">
-              عرض الكل
-            </Link>
+            <Link href="/app/reports" className="text-xs text-brand hover:underline">عرض الكل</Link>
           </div>
           <div className="space-y-3">
             {reports.map((report, i) => (
-              <Link
-                key={i}
-                href="/app/reports"
-                className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-surface transition text-xs group"
-              >
+              <Link key={i} href="/app/reports" className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-surface transition text-xs group">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-brand" />
                   <span className="font-medium">{report.title}</span>

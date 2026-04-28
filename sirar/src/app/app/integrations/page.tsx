@@ -136,32 +136,30 @@ export default function IntegrationsPage() {
           {/* Connection Steps */}
           <div>
             <h2 className="font-bold text-lg mb-4 text-center">طريقة الربط</h2>
-            <div className="grid sm:grid-cols-4 gap-0">
-              {connectionSteps
-                .slice()
-                .reverse()
-                .map((step, i, arr) => (
-                  <div key={step.step} className="relative text-center flex items-start">
-                    <div className="bg-white rounded-2xl p-5 border border-border flex-1">
-                      <div className="w-8 h-8 rounded-full bg-brand-light text-brand flex items-center justify-center text-sm font-bold mx-auto mb-3">
-                        {step.step}
-                      </div>
-                      <div className="w-12 h-12 bg-surface rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <step.icon className="h-6 w-6 text-brand" />
-                      </div>
-                      <h3 className="font-bold text-sm mb-1">{step.title}</h3>
-                      <p className="text-[11px] text-muted-foreground">
-                        {step.description}
-                      </p>
+            <div className="grid sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] gap-0 items-center">
+              {connectionSteps.map((step, i) => (
+                <div key={step.step} className="contents">
+                  <div className="bg-white rounded-2xl p-5 border border-border text-center">
+                    <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold mx-auto mb-3">
+                      {step.step}
                     </div>
-                    {i < arr.length - 1 && (
-                      <div className="hidden sm:flex items-center justify-center w-8 shrink-0 self-center">
-                        <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-                      </div>
-                    )}
+                    <div className="w-12 h-12 bg-surface rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <step.icon className="h-6 w-6 text-brand" />
+                    </div>
+                    <h3 className="font-bold text-sm mb-1">{step.title}</h3>
+                    <p className="text-[11px] text-muted-foreground">{step.description}</p>
                   </div>
-                ))}
+                  {i < connectionSteps.length - 1 && (
+                    <div className="hidden sm:flex items-center justify-center w-8 shrink-0">
+                      <ArrowLeft className="h-5 w-5 text-brand" />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+            <p className="text-center text-xs text-muted-foreground mt-3">
+              اتبع الخطوات من اليمين إلى اليسار لإتمام عملية الربط
+            </p>
           </div>
 
           {/* Integration Health */}

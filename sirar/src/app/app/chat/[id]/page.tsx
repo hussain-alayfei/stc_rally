@@ -1,12 +1,9 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/supabase/cache";
 import { ChatUI } from "../chat-ui";
 
 export const dynamic = "force-dynamic";
-
-const ACTIVE_COOKIE = "sirar_active_conv";
 
 export default async function ChatConversationPage({
   params,
@@ -27,15 +24,6 @@ export default async function ChatConversationPage({
     .maybeSingle();
 
   if (!conv) redirect("/app/chat");
-
-  // Remember as last active for next time
-  const cookieStore = await cookies();
-  cookieStore.set(ACTIVE_COOKIE, id, {
-    httpOnly: false,
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30,
-    path: "/",
-  });
 
   const [messagesRes, conversationsRes] = await Promise.all([
     supabase

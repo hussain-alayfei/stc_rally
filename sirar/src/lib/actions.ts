@@ -421,6 +421,27 @@ export async function seedDemoAlerts() {
       severity: "high" as const,
       type: "auth",
     },
+    {
+      title: "تصدير بيانات فئة A بدون إذن",
+      description:
+        "محاولة تصدير 500 سجل من فئة A عبر API. تم حظر العملية تلقائياً وفقاً لسياسة الحماية.",
+      severity: "high" as const,
+      type: "security",
+    },
+    {
+      title: "انتهاء صلاحية شهادة SSL",
+      description:
+        "شهادة SSL لخادم البيانات الداخلي ستنتهي خلال 7 أيام. يُنصح بالتجديد فوراً.",
+      severity: "medium" as const,
+      type: "monitoring",
+    },
+    {
+      title: "تغيير في سياسة النسخ الاحتياطي",
+      description:
+        "تم تعديل جدولة النسخ الاحتياطي من يومي إلى أسبوعي. يرجى التأكد أن هذا التغيير مقصود.",
+      severity: "low" as const,
+      type: "monitoring",
+    },
   ];
 
   const inserts = demo.map((d) => ({
