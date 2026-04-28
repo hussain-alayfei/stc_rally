@@ -22,9 +22,9 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/cache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 const iconMap: Record<string, React.ElementType> = {
   "id-card": CreditCard,
@@ -144,10 +144,8 @@ const scenarios = [
 ];
 
 export default async function ClassificationPage() {
+  const user = await getCurrentUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   // REAL counts from DB
   const { data: records } = user

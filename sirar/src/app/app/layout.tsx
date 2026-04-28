@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser, getDisplayName } from "@/lib/supabase/cache";
 import { AppShell } from "@/components/layout/app-shell";
 
 export default async function AppLayout({
@@ -7,40 +7,18 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
 
-  // Get authenticated user (secure server-side)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Fetch profile from DB
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, role, plan")
-    .eq("id", user.id)
-    .single();
-
-  // Use profile data or fallback to auth metadata
-  const fullName =
-    profile?.full_name ||
-    user.user_metadata?.full_name ||
-    user.email?.split("@")[0] ||
-    "مستخدم";
-
-  const firstName = fullName.split(" ")[0]; // first word of name
+  const display = await getDisplayName();
 
   return (
     <AppShell
-      userName={fullName}
-      userFirstName={firstName}
-      userEmail={user.email || ""}
-      userRole={profile?.role || "user"}
-      userPlan={profile?.plan || "free"}
+      userName={display.fullName}
+      userFirstName={display.firstName}
+      userEmail={display.email}
+      userRole={display.role}
+      userPlan={display.plan}
     >
       {children}
     </AppShell>

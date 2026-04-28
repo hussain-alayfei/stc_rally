@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { PermissionsTable } from "./permissions-table";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function PermissionsPage() {
   const supabase = await createClient();

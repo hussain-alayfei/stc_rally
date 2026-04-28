@@ -1,9 +1,9 @@
 import { ClipboardList, Clock, User, Shield, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
+import { getDisplayName } from "@/lib/supabase/cache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 interface AuditLogRow {
   id: string;
@@ -17,23 +17,7 @@ interface AuditLogRow {
 
 export default async function AuditPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("full_name, email")
-        .eq("id", user.id)
-        .single()
-    : { data: null };
-
-  const userName =
-    profile?.full_name ||
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0] ||
-    "—";
+  const { fullName: userName } = await getDisplayName();
 
   const { data: rawLogs } = await supabase
     .from("audit_logs")

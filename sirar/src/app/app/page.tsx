@@ -13,7 +13,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getDisplayName } from "@/lib/supabase/cache";
 import { DistributionChart, TrendChart } from "./dashboard-charts";
 
 const kpis = [
@@ -99,27 +99,7 @@ const protectionStatus = [
 ];
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("full_name, plan")
-        .eq("id", user.id)
-        .single()
-    : { data: null };
-
-  const fullName =
-    profile?.full_name ||
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0] ||
-    "مستخدم";
-
-  const firstName = fullName.split(" ")[0];
-
+  const { firstName } = await getDisplayName();
   const now = new Date();
   const dateStr = now.toLocaleDateString("ar-SA", { day: "numeric", month: "long" });
   const timeStr = now.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" });

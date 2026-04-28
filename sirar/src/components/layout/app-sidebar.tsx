@@ -69,6 +69,7 @@ export function AppSidebar({
             <Link
               key={item.href + item.label}
               href={item.href}
+              prefetch
               onClick={onClose}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative group",

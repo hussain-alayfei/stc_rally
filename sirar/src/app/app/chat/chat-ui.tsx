@@ -21,6 +21,8 @@ import {
   Calendar,
   IdCard,
   Building2,
+  ArrowRight,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,12 +57,14 @@ interface ExtractedRecord {
 
 interface ChatUIProps {
   conversationId: string;
+  conversationTitle?: string;
   conversations: Conversation[];
   initialMessages: InitialMessage[];
 }
 
 export function ChatUI({
   conversationId,
+  conversationTitle = "محادثة جديدة",
   conversations,
   initialMessages,
 }: ChatUIProps) {
@@ -208,6 +212,32 @@ export function ChatUI({
 
       {/* Main Chat */}
       <div className="flex-1 flex flex-col bg-surface min-w-0">
+        {/* Breadcrumb / context bar */}
+        <div className="bg-white border-b border-border px-4 lg:px-6 py-3 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Link
+              href="/app/data"
+              className="text-muted-foreground hover:text-brand text-xs flex items-center gap-1 shrink-0 transition-colors"
+              title="رجوع إلى البيانات"
+            >
+              <ArrowRight className="h-3.5 w-3.5" />
+              <Database className="h-3.5 w-3.5" />
+              البيانات
+            </Link>
+            <span className="text-muted-foreground/40 text-xs">/</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <MessageSquare className="h-3.5 w-3.5 text-brand shrink-0" />
+              <span className="text-sm font-medium truncate">
+                {conversationTitle}
+              </span>
+            </div>
+          </div>
+          <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-muted-foreground bg-green-50 text-green-700 px-2 py-1 rounded-full border border-green-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            محفوظ تلقائياً
+          </div>
+        </div>
+
         <ScrollArea className="flex-1 p-4 lg:p-6">
           <div className="max-w-2xl mx-auto space-y-4">
             {/* Welcome message if empty */}

@@ -1,33 +1,14 @@
 import { Settings, User, Bell, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/server";
+import { getDisplayName } from "@/lib/supabase/cache";
 import { SettingsForm } from "./settings-form";
 import { NotificationToggles } from "./notification-toggles";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = user
-    ? await supabase
-        .from("profiles")
-        .select("full_name, email, role")
-        .eq("id", user.id)
-        .single()
-    : { data: null };
-
-  const fullName =
-    profile?.full_name ||
-    user?.user_metadata?.full_name ||
-    user?.email?.split("@")[0] ||
-    "";
-  const email = user?.email || "";
-  const role = profile?.role || "user";
+  const { fullName, email, role } = await getDisplayName();
 
   return (
     <div className="space-y-6 max-w-2xl animate-fade-in">

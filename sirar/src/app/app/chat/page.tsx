@@ -1,42 +1,56 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { ChatUI } from "./chat-ui";
+import { getCurrentUser } from "@/lib/supabase/cache";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
+const ACTIVE_COOKIE = "sirar_active_conv";
+
+/**
+ * `/app/chat` — entry point. Always redirects to a specific
+ * conversation URL so the user has a stable, shareable, back-able
+ * route. Order of preference:
+ *   1. last-active conversation from cookie (still owned by user)
+ *   2. most recently updated conversation
+ *   3. create a fresh one
+ */
 export default async function ChatPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  // Get or create active conversation
-  const { data: conversations } = await supabase
-    .from("conversations")
-    .select("id, title, updated_at")
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false })
-    .limit(20);
+  const supabase = await createClient();
+  const cookieStore = await cookies();
+  const lastActive = cookieStore.get(ACTIVE_COOKIE)?.value;
 
-  let activeId: string;
-  if (!conversations || conversations.length === 0) {
-    const { data: newConv } = await supabase
+  if (lastActive) {
+    const { data: existing } = await supabase
       .from("conversations")
-      .insert({ user_id: user.id, title: "محادثة جديدة" })
-      .select()
-      .single();
-    activeId = newConv?.id;
-  } else {
-    activeId = conversations[0].id;
+      .select("id")
+      .eq("id", lastActive)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (existing) redirect(`/app/chat/${existing.id}`);
   }
 
-  return (
-    <ChatUI
-      conversationId={activeId}
-      conversations={conversations ?? []}
-      initialMessages={[]}
-    />
-  );
+  const { data: conversations } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("user_id", user.id)
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  if (conversations && conversations.length > 0) {
+    redirect(`/app/chat/${conversations[0].id}`);
+  }
+
+  const { data: fresh } = await supabase
+    .from("conversations")
+    .insert({ user_id: user.id, title: "محادثة جديدة" })
+    .select("id")
+    .single();
+
+  if (fresh) redirect(`/app/chat/${fresh.id}`);
+
+  redirect("/app");
 }

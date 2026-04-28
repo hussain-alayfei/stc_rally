@@ -1,16 +1,14 @@
 import { AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/cache";
 import { AlertsList } from "./alerts-list";
 import { SeedAlertsButton } from "./seed-button";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function AlertsPage() {
+  const user = await getCurrentUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: alerts } = user
     ? await supabase

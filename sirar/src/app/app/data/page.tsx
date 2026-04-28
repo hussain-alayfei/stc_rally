@@ -1,15 +1,13 @@
 import { Database } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/supabase/cache";
 import { DataTable } from "./data-table";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function DataPage() {
+  const user = await getCurrentUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data: records } = user
     ? await supabase
