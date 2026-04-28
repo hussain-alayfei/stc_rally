@@ -71,16 +71,21 @@ export function AppSidebar({
               href={item.href}
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors relative",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative group",
                 active
-                  ? "bg-brand-light text-brand"
-                  : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                  ? "bg-brand-light text-brand scale-[1.02]"
+                  : "text-muted-foreground hover:bg-surface hover:text-foreground hover:translate-x-[-2px]"
               )}
             >
               {active && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-brand rounded-s-full" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-brand rounded-s-full animate-fade-in" />
               )}
-              <item.icon className="h-5 w-5 shrink-0" />
+              <item.icon
+                className={cn(
+                  "h-5 w-5 shrink-0 transition-transform duration-200",
+                  active && "scale-110"
+                )}
+              />
               <span className="flex-1">{item.label}</span>
               {item.badge && (
                 <span className="text-red-500 text-sm leading-none">

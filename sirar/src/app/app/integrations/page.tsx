@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import {
   Key,
   Copy,
@@ -17,8 +17,11 @@ import {
   FileText,
   HelpCircle,
   ArrowLeft,
+  Loader2,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { regenerateApiKey } from "@/lib/actions";
 
 const connectionSteps = [
   {
@@ -50,11 +53,33 @@ const connectionSteps = [
 
 export default function IntegrationsPage() {
   const [showKey, setShowKey] = useState(false);
-  const apiKey = "sirar_key_8jKkR**************b7x9";
-  const fullKey = "sirar_key_8jKkR1234567890abcdefb7x9";
+  const [copied, setCopied] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [currentKey, setCurrentKey] = useState(
+    "sirar_key_8jKkR1234567890abcdefb7x9"
+  );
+  const previewKey =
+    currentKey.slice(0, 14) + "**************" + currentKey.slice(-4);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(currentKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  function handleRegenerate() {
+    if (!confirm("سيتم إلغاء المفتاح الحالي وإنشاء مفتاح جديد. متابعة؟")) return;
+    startTransition(async () => {
+      const res = await regenerateApiKey();
+      if (res?.success && res.key) {
+        setCurrentKey(res.key);
+        setShowKey(true);
+      }
+    });
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Hero */}
       <div className="relative bg-gradient-to-bl from-brand-light via-white to-purple-50 rounded-3xl p-8 md:p-12 border border-brand-muted/30 overflow-hidden">
         <div className="relative z-10 text-center max-w-xl mx-auto">
@@ -198,11 +223,12 @@ export default function IntegrationsPage() {
             </p>
             <div className="bg-surface rounded-xl p-3 flex items-center gap-2 mb-2">
               <code className="text-xs flex-1 truncate" dir="ltr">
-                {showKey ? fullKey : apiKey}
+                {showKey ? currentKey : previewKey}
               </code>
               <button
                 onClick={() => setShowKey(!showKey)}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title={showKey ? "إخفاء" : "إظهار"}
               >
                 {showKey ? (
                   <EyeOff className="h-4 w-4" />
@@ -211,18 +237,38 @@ export default function IntegrationsPage() {
                 )}
               </button>
               <button
-                onClick={() => navigator.clipboard.writeText(fullKey)}
-                className="text-muted-foreground hover:text-foreground"
+                onClick={handleCopy}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+                title="نسخ"
               >
-                <Copy className="h-4 w-4" />
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </button>
             </div>
             <p className="text-[10px] text-muted-foreground mb-4">
-              تم إنشاؤه في: 10:30 AM - 21 مايو 2024
+              {copied
+                ? "✓ تم النسخ إلى الحافظة"
+                : "تم إنشاؤه في: " +
+                  new Date().toLocaleDateString("ar-SA", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
             </p>
-            <Button className="w-full bg-brand hover:bg-brand-hover rounded-xl gap-2 text-sm">
-              <Plus className="h-4 w-4" />
-              إنشاء مفتاح جديد
+            <Button
+              onClick={handleRegenerate}
+              disabled={pending}
+              className="w-full bg-brand hover:bg-brand-hover rounded-xl gap-2 text-sm"
+            >
+              {pending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
+              {pending ? "جاري الإنشاء..." : "إنشاء مفتاح جديد"}
             </Button>
           </div>
 

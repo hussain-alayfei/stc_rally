@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppHeader } from "@/components/layout/app-header";
+import { PageTransition } from "@/components/layout/page-transition";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface AppShellProps {
@@ -57,7 +58,9 @@ export function AppShell({
           userFirstName={userFirstName}
           userPlan={userPlan}
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
     </div>
   );

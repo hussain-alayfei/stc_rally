@@ -1,19 +1,44 @@
-"use client";
-
-import { Settings, User, Bell, Shield, Globe, Palette } from "lucide-react";
+import { Settings, User, Bell, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { createClient } from "@/lib/supabase/server";
+import { SettingsForm } from "./settings-form";
+import { NotificationToggles } from "./notification-toggles";
 
-export default function SettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("full_name, email, role")
+        .eq("id", user.id)
+        .single()
+    : { data: null };
+
+  const fullName =
+    profile?.full_name ||
+    user?.user_metadata?.full_name ||
+    user?.email?.split("@")[0] ||
+    "";
+  const email = user?.email || "";
+  const role = profile?.role || "user";
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl animate-fade-in">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6 text-brand" />
           الإعدادات
         </h1>
-        <p className="text-muted-foreground text-sm mt-1">إدارة إعدادات حسابك والنظام</p>
+        <p className="text-muted-foreground text-sm mt-1">
+          إدارة إعدادات حسابك والنظام
+        </p>
       </div>
 
       {/* Profile */}
@@ -22,21 +47,7 @@ export default function SettingsPage() {
           <User className="h-5 w-5 text-brand" />
           <h2 className="font-bold">الملف الشخصي</h2>
         </div>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1.5">الاسم الكامل</label>
-            <Input defaultValue="سارة أحمد" className="rounded-xl" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">البريد الإلكتروني</label>
-            <Input defaultValue="sara@example.com" className="rounded-xl" dir="ltr" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">الدور</label>
-            <Input defaultValue="مدير النظام" className="rounded-xl" disabled />
-          </div>
-          <Button className="bg-brand hover:bg-brand-hover rounded-xl">حفظ التغييرات</Button>
-        </div>
+        <SettingsForm fullName={fullName} email={email} role={role} />
       </div>
 
       <Separator />
@@ -47,23 +58,7 @@ export default function SettingsPage() {
           <Bell className="h-5 w-5 text-brand" />
           <h2 className="font-bold">الإشعارات</h2>
         </div>
-        <div className="space-y-3">
-          {[
-            { label: "تنبيهات الأمان", desc: "تلقي إشعارات عند اكتشاف تهديدات" },
-            { label: "تحديثات النظام", desc: "تلقي إشعارات عند تحديث النظام" },
-            { label: "تقارير أسبوعية", desc: "تلقي ملخص أسبوعي بالبريد" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center justify-between py-2">
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-muted-foreground">{item.desc}</p>
-              </div>
-              <div className="w-10 h-6 bg-brand rounded-full relative cursor-pointer">
-                <div className="absolute start-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform translate-x-0" />
-              </div>
-            </div>
-          ))}
-        </div>
+        <NotificationToggles />
       </div>
 
       <Separator />
@@ -75,10 +70,16 @@ export default function SettingsPage() {
           <h2 className="font-bold">الأمان</h2>
         </div>
         <div className="space-y-3">
-          <Button variant="outline" className="w-full rounded-xl justify-start gap-2">
+          <Button
+            variant="outline"
+            className="w-full rounded-xl justify-start gap-2 hover:bg-brand-light hover:text-brand hover:border-brand-muted transition-all"
+          >
             تغيير كلمة المرور
           </Button>
-          <Button variant="outline" className="w-full rounded-xl justify-start gap-2">
+          <Button
+            variant="outline"
+            className="w-full rounded-xl justify-start gap-2 hover:bg-brand-light hover:text-brand hover:border-brand-muted transition-all"
+          >
             تفعيل المصادقة الثنائية
           </Button>
         </div>
