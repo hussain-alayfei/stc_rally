@@ -229,7 +229,7 @@ export default async function ClassificationPage() {
           <Sparkles className="h-5 w-5 text-brand" />
           <div>
             <p className="text-xs text-muted-foreground">المحرّك</p>
-            <p className="font-semibold text-sm">GPT-4o-mini</p>
+            <p className="font-semibold text-sm">سرار AI Engine</p>
           </div>
         </div>
       </div>
@@ -369,7 +369,7 @@ export default async function ClassificationPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { icon: Database, label: "1. استقبال البيانات", desc: "إدخال أو API" },
-            { icon: Brain, label: "2. تحليل بـ GPT", desc: "كشف الحقول الحساسة" },
+            { icon: Brain, label: "2. تحليل ذكي", desc: "كشف الحقول الحساسة" },
             { icon: Shield, label: "3. تصنيف", desc: "A / B / C + درجة" },
             { icon: Lock, label: "4. تطبيق الحماية", desc: "تشفير + إخفاء + صلاحيات" },
           ].map((step, i) => (
@@ -391,8 +391,8 @@ export default async function ClassificationPage() {
       <div className="bg-white rounded-2xl p-4 border border-border text-center">
         <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
           <Eye className="h-4 w-4 text-brand" />
-          جميع التصنيفات تتم بواسطة GPT-4o-mini مع مراجعة دورية لضمان الدقة
-          والأمان
+          جميع التصنيفات تتم بواسطة محرّك سرار الذكي مع مراجعة دورية لضمان
+          الدقة والأمان
         </p>
       </div>
     </div>

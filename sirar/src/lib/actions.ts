@@ -315,6 +315,132 @@ function cryptoRandom(len: number) {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   CONVERSATIONS
+   ───────────────────────────────────────────────────────────── */
+export async function createConversation() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data, error } = await supabase
+    .from("conversations")
+    .insert({ user_id: user.id, title: "محادثة جديدة" })
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+
+  await logAudit("بدء محادثة جديدة", "conversation", data.id);
+  revalidatePath("/app/chat");
+  return { id: data.id };
+}
+
+export async function deleteConversation(id: string) {
+  const supabase = await createClient();
+  await supabase.from("conversations").delete().eq("id", id);
+  await logAudit("حذف محادثة", "conversation", id);
+  revalidatePath("/app/chat");
+  return { success: true };
+}
+
+export async function renameConversation(id: string, title: string) {
+  const supabase = await createClient();
+  await supabase.from("conversations").update({ title }).eq("id", id);
+  revalidatePath("/app/chat");
+  return { success: true };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SEED DEMO ALERTS — once per user
+   ───────────────────────────────────────────────────────────── */
+export async function seedDemoAlerts() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "unauthorized" };
+
+  const { count } = await supabase
+    .from("alerts")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  if ((count ?? 0) > 0) {
+    return { success: true, message: "alerts already exist" };
+  }
+
+  const demo = [
+    {
+      title: "محاولة وصول غير مصرّح بها",
+      description:
+        "تم رصد محاولة وصول من عنوان IP غير معروف (192.168.45.12) إلى بيانات فئة A. تم حظر المحاولة تلقائياً.",
+      severity: "high" as const,
+      type: "security",
+    },
+    {
+      title: "تحميل ملف يحتوي بيانات حساسة",
+      description:
+        "محاولة تحميل ملف 'customers_full.xlsx' يحوي 1,240 سجل بيانات شخصية. تم إيقاف العملية وفقاً لسياسة Zero Trust.",
+      severity: "high" as const,
+      type: "security",
+    },
+    {
+      title: "تعديل غير معتاد على الصلاحيات",
+      description:
+        "تم تعديل صلاحيات وصول دور 'مدير القسم' لفئة A خارج الساعات الرسمية. يرجى المراجعة.",
+      severity: "medium" as const,
+      type: "permissions",
+    },
+    {
+      title: "تسجيل دخول من موقع جغرافي جديد",
+      description:
+        "تسجيل دخول ناجح من 'الرياض، السعودية' لم يُستخدم من قبل لهذا الحساب.",
+      severity: "low" as const,
+      type: "auth",
+    },
+    {
+      title: "نمو غير طبيعي في حجم البيانات",
+      description:
+        "زاد حجم بيانات فئة B بنسبة 47% خلال 24 ساعة. مراجعة موصى بها للتأكد من شرعية المصدر.",
+      severity: "medium" as const,
+      type: "monitoring",
+    },
+    {
+      title: "اكتشاف بيانات صحية حساسة",
+      description:
+        "محرّك التحليل اكتشف 18 سجل يحتوي على معلومات صحية. تم تصنيفها فئة A تلقائياً.",
+      severity: "medium" as const,
+      type: "classification",
+    },
+    {
+      title: "فشل المصادقة المتكرر",
+      description:
+        "5 محاولات تسجيل دخول فاشلة لحساب 'manager@company.sa' خلال آخر 10 دقائق.",
+      severity: "high" as const,
+      type: "auth",
+    },
+  ];
+
+  const inserts = demo.map((d) => ({
+    user_id: user.id,
+    title: d.title,
+    description: d.description,
+    severity: d.severity,
+    type: d.type,
+    status: "active",
+  }));
+
+  const { error } = await supabase.from("alerts").insert(inserts);
+  if (error) return { error: error.message };
+
+  revalidatePath("/app/alerts");
+  revalidatePath("/app");
+  return { success: true, count: inserts.length };
+}
+
+/* ─────────────────────────────────────────────────────────────
    AUTH — sign out
    ───────────────────────────────────────────────────────────── */
 export async function signOutAction() {

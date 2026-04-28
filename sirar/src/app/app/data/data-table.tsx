@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   Search,
   Download,
@@ -12,12 +13,12 @@ import {
   Phone,
   Calendar,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { deleteDataRecord } from "@/lib/actions";
-import { AiAddModal } from "./ai-add-modal";
 
 interface DataRecord {
   id: string;
@@ -52,7 +53,6 @@ const typeLabels: Record<string, string> = {
 export function DataTable({ initial }: { initial: DataRecord[] }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "A" | "B" | "C">("all");
-  const [showAdd, setShowAdd] = useState(false);
   const [viewing, setViewing] = useState<DataRecord | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -137,13 +137,14 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
         >
           <Download className="h-4 w-4" /> تصدير
         </Button>
-        <Button
-          onClick={() => setShowAdd(true)}
-          className="bg-gradient-to-r from-brand to-brand-hover hover:opacity-90 rounded-xl gap-2 shadow-sm"
+        <Link
+          href="/app/chat"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-brand to-brand-hover hover:opacity-90 text-white text-sm font-medium px-4 py-2 shadow-sm transition-opacity"
         >
+          <MessageSquare className="h-4 w-4" />
           <Sparkles className="h-4 w-4" />
-          إضافة بتصنيف ذكي
-        </Button>
+          إضافة عبر المحادثة الذكية
+        </Link>
       </div>
 
       {/* Table */}
@@ -227,8 +228,6 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
         )}
       </div>
 
-      {/* AI Add Modal */}
-      {showAdd && <AiAddModal onClose={() => setShowAdd(false)} />}
 
       {/* View Modal */}
       {viewing && (

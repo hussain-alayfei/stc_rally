@@ -111,11 +111,15 @@ export function AlertsList({ initial }: { initial: Alert[] }) {
       {filtered.length === 0 ? (
         <div className="bg-white rounded-2xl border border-border text-center py-16 px-4">
           <Inbox className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-sm font-medium">لا توجد تنبيهات</p>
+          <p className="text-sm font-medium">
+            {initial.length === 0
+              ? "لا توجد تنبيهات حتى الآن"
+              : "لا توجد تنبيهات في هذا التصنيف"}
+          </p>
           <p className="text-xs text-muted-foreground mt-1">
             {initial.length === 0
-              ? "كل شيء يعمل بشكل طبيعي ✓"
-              : "لا توجد تنبيهات في هذا التصنيف"}
+              ? "اضغط على زر «تحميل بيانات توضيحية» لمشاهدة عينة من التنبيهات"
+              : "جرّب فلتراً آخر"}
           </p>
         </div>
       ) : (
