@@ -8,19 +8,40 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  let user;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    redirect("/login");
+  }
   if (!user) redirect("/login");
 
-  const [display, supabase] = await Promise.all([
-    getDisplayName(),
-    createClient(),
-  ]);
+  let display = {
+    fullName: user.email?.split("@")[0] || "مستخدم",
+    firstName: user.email?.split("@")[0] || "مستخدم",
+    email: user.email || "",
+    role: "user",
+    plan: "free",
+  };
+  let alertCount = 0;
 
-  const { count } = await supabase
-    .from("alerts")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "active");
+  try {
+    const [d, supabase] = await Promise.all([
+      getDisplayName(),
+      createClient(),
+    ]);
+    display = d;
+
+    const { count } = await supabase
+      .from("alerts")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("status", "active");
+
+    alertCount = count ?? 0;
+  } catch {
+    // DB may be unreachable — continue with defaults
+  }
 
   return (
     <AppShell
@@ -29,7 +50,7 @@ export default async function AppLayout({
       userEmail={display.email}
       userRole={display.role}
       userPlan={display.plan}
-      alertCount={count ?? 0}
+      alertCount={alertCount}
     >
       {children}
     </AppShell>
