@@ -33,48 +33,80 @@ export async function logAudit(
 /* ─────────────────────────────────────────────────────────────
    DATA RECORDS
    ───────────────────────────────────────────────────────────── */
-export async function addDataRecord(formData: FormData) {
+interface AddRecordInput {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  data_type: string;
+  category: "A" | "B" | "C";
+  sensitivity_score: number;
+  reasoning?: string;
+  detected_fields?: unknown[];
+}
+
+export async function addDataRecord(input: AddRecordInput) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim() || null;
-  const phone = String(formData.get("phone") || "").trim() || null;
-  const dataType = String(formData.get("data_type") || "personal");
-  const category = String(formData.get("category") || "B") as "A" | "B" | "C";
-
-  if (!name) return { error: "الاسم مطلوب" };
+  if (!input.name?.trim()) return { error: "الاسم مطلوب" };
 
   const { data, error } = await supabase
     .from("data_records")
     .insert({
       user_id: user.id,
-      source: "manual",
-      category,
-      sensitivity_score: category === "A" ? 95 : category === "B" ? 65 : 30,
-      data_type: dataType,
-      name,
-      email,
-      phone,
+      source: "ai-classified",
+      category: input.category,
+      sensitivity_score: input.sensitivity_score,
+      data_type: input.data_type,
+      name: input.name,
+      email: input.email || null,
+      phone: input.phone || null,
       status: "active",
-      fields: { name, email, phone },
-      masked_fields: {},
+      fields: {
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+      },
+      masked_fields: {
+        ai_reasoning: input.reasoning,
+        detected_fields: input.detected_fields,
+      },
     })
     .select()
     .single();
 
   if (error) return { error: error.message };
 
-  await logAudit("إضافة سجل بيانات", "data_record", data.id, {
-    name,
-    category,
-  });
+  await logAudit(
+    `إضافة سجل (تصنيف ذكي → فئة ${input.category})`,
+    "data_record",
+    data.id,
+    {
+      name: input.name,
+      category: input.category,
+      score: input.sensitivity_score,
+    }
+  );
+
+  // Auto-create a high-severity alert for sensitive data (Cat A)
+  if (input.category === "A") {
+    await supabase.from("alerts").insert({
+      user_id: user.id,
+      title: `بيانات حساسة جديدة في فئة A`,
+      description: `تم إضافة سجل "${input.name}" بمستوى حساسية عالية. السبب: ${input.reasoning || "بيانات شخصية حساسة"}`,
+      severity: "high",
+      type: "classification",
+      status: "active",
+    });
+  }
 
   revalidatePath("/app/data");
   revalidatePath("/app/audit");
+  revalidatePath("/app/classification");
+  revalidatePath("/app/alerts");
   revalidatePath("/app");
   return { success: true };
 }

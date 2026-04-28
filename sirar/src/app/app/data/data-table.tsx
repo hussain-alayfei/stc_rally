@@ -3,22 +3,21 @@
 import { useState, useTransition } from "react";
 import {
   Search,
-  Filter,
   Download,
-  Plus,
   Eye,
   Trash2,
   X,
-  Loader2,
   Inbox,
   Mail,
   Phone,
   Calendar,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { addDataRecord, deleteDataRecord } from "@/lib/actions";
+import { deleteDataRecord } from "@/lib/actions";
+import { AiAddModal } from "./ai-add-modal";
 
 interface DataRecord {
   id: string;
@@ -56,7 +55,6 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
   const [showAdd, setShowAdd] = useState(false);
   const [viewing, setViewing] = useState<DataRecord | null>(null);
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState("");
 
   const filtered = initial.filter((r) => {
     if (filter !== "all" && r.category !== filter) return false;
@@ -94,18 +92,6 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
     a.download = `sirar-data-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }
-
-  async function handleAdd(formData: FormData) {
-    setError("");
-    startTransition(async () => {
-      const res = await addDataRecord(formData);
-      if (res?.error) {
-        setError(res.error);
-        return;
-      }
-      setShowAdd(false);
-    });
   }
 
   async function handleDelete(id: string) {
@@ -153,10 +139,10 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
         </Button>
         <Button
           onClick={() => setShowAdd(true)}
-          className="bg-brand hover:bg-brand-hover rounded-xl gap-2"
+          className="bg-gradient-to-r from-brand to-brand-hover hover:opacity-90 rounded-xl gap-2 shadow-sm"
         >
-          <Plus className="h-4 w-4" />
-          إضافة بيانات
+          <Sparkles className="h-4 w-4" />
+          إضافة بتصنيف ذكي
         </Button>
       </div>
 
@@ -241,122 +227,8 @@ export function DataTable({ initial }: { initial: DataRecord[] }) {
         )}
       </div>
 
-      {/* Add Modal */}
-      {showAdd && (
-        <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setShowAdd(false)}
-        >
-          <div
-            className="bg-white rounded-2xl p-6 w-full max-w-md animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">إضافة سجل بيانات جديد</h3>
-              <button
-                onClick={() => setShowAdd(false)}
-                className="p-1 rounded-lg hover:bg-surface"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <form action={handleAdd} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  الاسم الكامل *
-                </label>
-                <Input
-                  name="name"
-                  required
-                  placeholder="مثال: أحمد محمد"
-                  className="rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  البريد الإلكتروني
-                </label>
-                <Input
-                  name="email"
-                  type="email"
-                  placeholder="example@domain.com"
-                  className="rounded-xl"
-                  dir="ltr"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  رقم الهاتف
-                </label>
-                <Input
-                  name="phone"
-                  placeholder="+966 5X XXX XXXX"
-                  className="rounded-xl"
-                  dir="ltr"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">
-                    النوع
-                  </label>
-                  <select
-                    name="data_type"
-                    defaultValue="personal"
-                    className="w-full h-10 px-3 rounded-xl border border-input bg-white text-sm"
-                  >
-                    <option value="personal">شخصية</option>
-                    <option value="financial">مالية</option>
-                    <option value="medical">صحية</option>
-                    <option value="contact">اتصال</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">
-                    التصنيف
-                  </label>
-                  <select
-                    name="category"
-                    defaultValue="B"
-                    className="w-full h-10 px-3 rounded-xl border border-input bg-white text-sm"
-                  >
-                    <option value="A">فئة A — عالية</option>
-                    <option value="B">فئة B — متوسطة</option>
-                    <option value="C">فئة C — منخفضة</option>
-                  </select>
-                </div>
-              </div>
-              {error && (
-                <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg">
-                  {error}
-                </p>
-              )}
-              <div className="flex gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 rounded-xl"
-                  onClick={() => setShowAdd(false)}
-                  disabled={pending}
-                >
-                  إلغاء
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1 bg-brand hover:bg-brand-hover rounded-xl"
-                  disabled={pending}
-                >
-                  {pending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "حفظ"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* AI Add Modal */}
+      {showAdd && <AiAddModal onClose={() => setShowAdd(false)} />}
 
       {/* View Modal */}
       {viewing && (

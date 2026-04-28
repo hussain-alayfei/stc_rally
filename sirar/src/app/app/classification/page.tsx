@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import {
   CheckCircle,
@@ -16,8 +14,17 @@ import {
   CreditCard,
   BarChart3,
   UserCheck,
+  Sparkles,
+  ArrowLeft,
+  Brain,
+  Lock,
+  Eye,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const iconMap: Record<string, React.ElementType> = {
   "id-card": CreditCard,
@@ -105,10 +112,71 @@ const categories = [
   },
 ];
 
-export default function ClassificationPage() {
+const scenarios = [
+  {
+    icon: CreditCard,
+    color: "text-red-500",
+    bg: "bg-red-50",
+    title: "سيناريو 1: عميل يدخل بيانات بنكية",
+    desc: "اسم + IBAN + رقم بطاقة → الذكاء الاصطناعي يصنّفها فئة A فوراً ويُخفي البطاقة، ويُقيّد الوصول للمدراء فقط.",
+  },
+  {
+    icon: Users,
+    color: "text-amber-500",
+    bg: "bg-amber-50",
+    title: "سيناريو 2: قائمة عملاء جديدة",
+    desc: "اسم + إيميل + جوال → فئة B (تكون البيانات معاً أهم من كل واحدة وحدها)، تُتاح للموظفين المُعتمدين.",
+  },
+  {
+    icon: Globe,
+    color: "text-green-500",
+    bg: "bg-green-50",
+    title: "سيناريو 3: تقرير عام للنشر",
+    desc: "محتوى تسويقي بدون أي بيانات شخصية → فئة C، متاح للجميع مع تسجيل الوصول فقط.",
+  },
+  {
+    icon: Heart,
+    color: "text-red-500",
+    bg: "bg-red-50",
+    title: "سيناريو 4: بيانات طبية",
+    desc: "أي تشخيص أو سجل دواء → فئة A تلقائياً + تنبيه عالي + تشفير AES-256.",
+  },
+];
+
+export default async function ClassificationPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // REAL counts from DB
+  const { data: records } = user
+    ? await supabase
+        .from("data_records")
+        .select("category, status, created_at")
+        .eq("user_id", user.id)
+    : { data: [] };
+
+  const all = records ?? [];
+  const total = all.length;
+  const counts = {
+    A: all.filter((r) => r.category === "A").length,
+    B: all.filter((r) => r.category === "B").length,
+    C: all.filter((r) => r.category === "C").length,
+  };
+  const lastUpdate = all[0]?.created_at
+    ? new Date(all[0].created_at)
+    : new Date();
+  const lastUpdateStr = lastUpdate.toLocaleString("ar-SA", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
-    <div className="space-y-6">
-      {/* Header with shield illustration */}
+    <div className="space-y-6 animate-fade-in">
+      {/* Hero */}
       <div className="relative bg-gradient-to-bl from-brand-light/50 via-white to-white rounded-2xl p-6 border border-border overflow-hidden">
         <div className="relative z-10 text-center max-w-xl mx-auto">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -122,32 +190,21 @@ export default function ClassificationPage() {
             الوصول لكل فئة لضمان مستويات الأمان والامتثال.
           </p>
         </div>
-        {/* Shield 3D decoration */}
         <div className="absolute top-2 left-4 w-28 h-28 opacity-30 hidden lg:block">
-          <div className="w-full h-full bg-gradient-to-br from-brand to-brand-hover rounded-2xl flex items-center justify-center shadow-lg">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 2L4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4z"
-                fill="white"
-                opacity="0.5"
-              />
-              <path
-                d="M12 2L4 6v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V6l-8-4zm0 2.18l6 3v5.09c0 4.41-2.88 8.48-6 9.73-3.12-1.25-6-5.32-6-9.73v-5.09l6-3z"
-                fill="white"
-              />
-            </svg>
+          <div className="w-full h-full bg-gradient-to-br from-brand to-brand-hover rounded-2xl flex items-center justify-center shadow-lg animate-float">
+            <Shield className="h-12 w-12 text-white" />
           </div>
         </div>
       </div>
 
-      {/* Stats Row */}
+      {/* REAL Stats Row */}
       <div className="flex flex-wrap items-center justify-center gap-6 bg-white rounded-2xl p-4 border border-border">
         <div className="flex items-center gap-3">
           <CheckCircle className="h-5 w-5 text-green-500" />
           <div>
             <p className="text-xs text-muted-foreground">حالة التصنيف</p>
             <p className="font-semibold text-sm text-green-600">
-              مكتمل بنجاح
+              {total > 0 ? "مكتمل بنجاح" : "بانتظار البيانات"}
             </p>
           </div>
         </div>
@@ -156,7 +213,7 @@ export default function ClassificationPage() {
           <Database className="h-5 w-5 text-brand" />
           <div>
             <p className="text-xs text-muted-foreground">إجمالي البيانات</p>
-            <p className="font-semibold text-sm">1,248 عنصر</p>
+            <p className="font-semibold text-sm">{total} عنصر</p>
           </div>
         </div>
         <div className="w-px h-8 bg-border hidden sm:block" />
@@ -164,82 +221,178 @@ export default function ClassificationPage() {
           <Clock className="h-5 w-5 text-muted-foreground" />
           <div>
             <p className="text-xs text-muted-foreground">آخر تحديث</p>
-            <p className="font-semibold text-sm">
-              10:45 AM مايو 2024 - مايو
-            </p>
+            <p className="font-semibold text-sm">{lastUpdateStr}</p>
+          </div>
+        </div>
+        <div className="w-px h-8 bg-border hidden sm:block" />
+        <div className="flex items-center gap-3">
+          <Sparkles className="h-5 w-5 text-brand" />
+          <div>
+            <p className="text-xs text-muted-foreground">المحرّك</p>
+            <p className="font-semibold text-sm">GPT-4o-mini</p>
           </div>
         </div>
       </div>
 
       {/* Category Title */}
-      <h2 className="font-bold text-lg">فئات تصنيف البيانات</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-bold text-lg">فئات تصنيف البيانات</h2>
+        <Link
+          href="/app/data"
+          className="text-xs text-brand hover:underline flex items-center gap-1"
+        >
+          إدارة السجلات
+          <ArrowLeft className="h-3 w-3" />
+        </Link>
+      </div>
 
-      {/* Category Cards */}
+      {/* Category Cards with REAL counts */}
       <div className="grid md:grid-cols-3 gap-6">
-        {categories.map((cat) => (
-          <Link
-            key={cat.id}
-            href={`/app/classification/${cat.id}`}
-            className={`${cat.bgColor} ${cat.borderColor} border rounded-2xl p-5 hover:shadow-md transition-shadow block`}
-          >
-            {/* Header */}
-            <div className="text-center mb-4">
+        {categories.map((cat) => {
+          const count = counts[cat.id as "A" | "B" | "C"];
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          return (
+            <Link
+              key={cat.id}
+              href={`/app/classification/${cat.id}`}
+              className={`${cat.bgColor} ${cat.borderColor} border rounded-2xl p-5 hover:shadow-md hover:-translate-y-1 transition-all duration-200 block`}
+            >
+              <div className="text-center mb-4">
+                <div
+                  className={`w-12 h-12 ${cat.letterBg} ${cat.letterColor} rounded-xl flex items-center justify-center text-xl font-bold mx-auto mb-2`}
+                >
+                  {cat.letter}
+                </div>
+                <h3 className="font-bold text-lg">{cat.nameAr}</h3>
+                <Badge className={`${cat.badgeBg} border-0 text-xs mt-1`}>
+                  {cat.sensitivityLevel}
+                </Badge>
+              </div>
+
+              <p className="text-sm text-muted-foreground text-center mb-4">
+                {cat.descriptionAr}
+              </p>
+
+              {/* REAL count for this category */}
               <div
-                className={`w-12 h-12 ${cat.letterBg} ${cat.letterColor} rounded-xl flex items-center justify-center text-xl font-bold mx-auto mb-2`}
+                className={`${cat.accessBg} rounded-xl p-3 mb-4 text-center`}
               >
-                {cat.letter}
+                <p className="text-2xl font-bold">{count}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  سجل ({pct}% من الإجمالي)
+                </p>
               </div>
-              <h3 className="font-bold text-lg">{cat.nameAr}</h3>
-              <Badge className={`${cat.badgeBg} border-0 text-xs mt-1`}>
-                {cat.sensitivityLevel}
-              </Badge>
-            </div>
 
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              {cat.descriptionAr}
-            </p>
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-center mb-2">أمثلة</p>
+                <div className="space-y-2">
+                  {cat.examples.map((ex, i) => {
+                    const Icon = iconMap[ex.icon] || Shield;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{ex.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-            {/* Examples */}
-            <div className="mb-4">
-              <p className="text-xs font-semibold text-center mb-2">أمثلة</p>
-              <div className="space-y-2">
-                {cat.examples.map((ex, i) => {
-                  const Icon = iconMap[ex.icon] || Shield;
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{ex.label}</span>
-                    </div>
-                  );
-                })}
+              <div className={`${cat.accessBg} rounded-xl p-3`}>
+                <p className="text-xs font-semibold mb-2">من يمكنه الوصول؟</p>
+                <div className="space-y-1.5">
+                  {cat.accessRules.map((rule, i) => {
+                    const Icon = iconMap[rule.icon] || Users;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{rule.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* HOW IT WORKS — multiple scenarios */}
+      <div className="bg-white rounded-2xl p-6 border border-border">
+        <div className="flex items-center gap-2 mb-1">
+          <Brain className="h-5 w-5 text-brand" />
+          <h2 className="font-bold text-lg">كيف يفكّر سرار؟ سيناريوهات حية</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-5">
+          الذكاء الاصطناعي يطبّق معايير{" "}
+          <span className="font-semibold text-brand">Zero Trust</span> لكل
+          سجل تلقائياً
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          {scenarios.map((s, i) => (
+            <div
+              key={i}
+              className="bg-surface/50 rounded-xl p-4 border border-border hover:bg-surface transition-colors"
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={`w-9 h-9 rounded-lg ${s.bg} flex items-center justify-center shrink-0`}
+                >
+                  <s.icon className={`h-5 w-5 ${s.color}`} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-sm mb-1">{s.title}</h3>
+                  <p className="text-xs text-muted-foreground">{s.desc}</p>
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
 
-            {/* Access Rules */}
-            <div className={`${cat.accessBg} rounded-xl p-3`}>
-              <p className="text-xs font-semibold mb-2">من يمكنه الوصول؟</p>
-              <div className="space-y-1.5">
-                {cat.accessRules.map((rule, i) => {
-                  const Icon = iconMap[rule.icon] || Users;
-                  return (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{rule.label}</span>
-                    </div>
-                  );
-                })}
+      {/* Pipeline / How it works */}
+      <div className="bg-gradient-to-br from-brand to-brand-hover text-white rounded-2xl p-6">
+        <h2 className="font-bold text-lg mb-1 flex items-center gap-2">
+          <Sparkles className="h-5 w-5" />
+          خط أنابيب التصنيف الذكي
+        </h2>
+        <p className="text-xs text-white/80 mb-5">
+          من الإدخال إلى الحماية — في أقل من ثانيتين
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { icon: Database, label: "1. استقبال البيانات", desc: "إدخال أو API" },
+            { icon: Brain, label: "2. تحليل بـ GPT", desc: "كشف الحقول الحساسة" },
+            { icon: Shield, label: "3. تصنيف", desc: "A / B / C + درجة" },
+            { icon: Lock, label: "4. تطبيق الحماية", desc: "تشفير + إخفاء + صلاحيات" },
+          ].map((step, i) => (
+            <div
+              key={i}
+              className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center"
+            >
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-2">
+                <step.icon className="h-5 w-5" />
               </div>
+              <p className="text-xs font-bold">{step.label}</p>
+              <p className="text-[10px] text-white/70 mt-0.5">{step.desc}</p>
             </div>
-          </Link>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Footer Notice */}
       <div className="bg-white rounded-2xl p-4 border border-border text-center">
         <p className="text-xs text-muted-foreground flex items-center justify-center gap-2">
-          <Shield className="h-4 w-4 text-brand" />
-          جميع التصنيفات تدار تلقائياً بواسطة نظام الذكاء الاصطناعي مع مراجعة
-          دورية لضمان الدقة والأمان
+          <Eye className="h-4 w-4 text-brand" />
+          جميع التصنيفات تتم بواسطة GPT-4o-mini مع مراجعة دورية لضمان الدقة
+          والأمان
         </p>
       </div>
     </div>
